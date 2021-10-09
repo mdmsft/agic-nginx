@@ -37,7 +37,7 @@ jobs:
       id: deploy
       with:
         resourceGroupName: ${{ env.resourceGroupName }}
-        deploymentName: gh_${{ env.GITHUB_RUN_ID }}
+        deploymentName: gh_${{ date -u +gh_%F_%H-%M-%S }}
         template: main.bicep
         parameters: /tmp/secrets/main.parameters.json
     
@@ -49,6 +49,7 @@ jobs:
 
     - name: Create TLS secret
       run: |
+        kubectl config use-context ${{ steps.deploy.outputs.clusterName }}
         kubectl create secret tls ${{ env.resourceGroupName }} --key /tmp/secrets/tls.key --cert /tmp/secrets/tls.crt -o ''
         rm -rf /tmp/secrets
 
