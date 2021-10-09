@@ -46,14 +46,29 @@ jobs:
         template: main.bicep
         parameters: /tmp/secrets/main.parameters.json
     
-    - name: Provision kubernetes resources
+    - name: Get AKS credentials
       uses: Azure/CLI@v1
+      id: aks
       with:
         inlineScript: |
-          az aks get-credentials -n ${{ steps.deploy.outputs.clusterName }} -g ${{ env.resourceGroupName }} -o none
-          kubectl create secret tls ${{ env.resourceGroupName }} --key /tmp/secrets/tls.key --cert /tmp/secrets/tls.crt --output ''
-          helm install ingress-nginx ingress-nginx/ingress-nginx \
-            --namespace ingress --create-namespace \
-            --set controller.service.type=ClusterIP \
-            --set controller.extraArgs.default-ssl-certificate=default/${{ env.resourceGroupName }}
-          kubectl apply -f k8s.yaml
+          echo "::set-output name=config::`az aks get-credentials -n ${{ steps.deploy.outputs.clusterName }} -g ${{ env.resourceGroupName }} -o none -f -`"
+
+    - name: Write kubeconfig to the file
+      run: |
+        echo "${{ steps.aks.outputs.config }}" > ~/.kube/config
+
+    - name: Create TLS secret
+      run: |
+        kubectl create secret tls ${{ env.resourceGroupName }} --key /tmp/secrets/tls.key --cert /tmp/secrets/tls.crt -o ''
+        rm -rf /tmp/secrets
+
+    - name: Install ingress-nginx helm chart
+      run: |
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress --create-namespace \
+          --set controller.service.type=ClusterIP \
+          --set controller.extraArgs.default-ssl-certificate=default/${{ env.resourceGroupName }}
+
+    - name: Apply manifest
+      run: |
+        kubectl apply -f k8s.yaml
