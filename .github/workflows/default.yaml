@@ -31,6 +31,7 @@ jobs:
         gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.key tls.key.gpg
         gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.crt tls.crt.gpg
         gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/main.parameters.json main.parameters.json.gpg
+        ls -la ~/secrets
       
     - name: Provision infrastructure
       uses: azure/arm-deploy@v1
