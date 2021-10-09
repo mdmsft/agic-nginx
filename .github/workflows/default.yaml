@@ -37,7 +37,7 @@ jobs:
       id: deploy
       with:
         resourceGroupName: ${{ env.resourceGroupName }}
-        deploymentName: gh_${{ date -u +gh_%F_%H-%M-%S }}
+        deploymentName: gh_${GITHUB_RUN_ID}
         template: main.bicep
         parameters: /tmp/secrets/main.parameters.json
     
