@@ -1,0 +1,64 @@
+name: Default
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  resourceGroupName: megatron
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v1
+
+    - name: Install Helm
+      uses: azure/setup-helm@v1
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Decrypt secrets
+      run: |
+        mkdir -p ~/secrets
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.key tls.key.gpg
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.crt tls.crt.gpg
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/main.parameters.json main.parameters.json.gpg
+      
+    - name: Provision infrastructure
+      uses: azure/arm-deploy@v1
+      id: deploy
+      with:
+        resourceGroupName: ${{ env.resourceGroupName }}
+        deploymentName: gh_${{ env.GITHUB_RUN_ID }}
+        template: main.bicep
+        parameters: ~/secrets/main.parameters.json
+    
+    - name: Get AKS credentials
+      uses: Azure/CLI@v1
+      with:
+        inlineScript: |
+          az aks get-credentials -n ${{ steps.deploy.outputs.clusterName }} -g ${{ env.resourceGroupName }} -o none
+
+    - name: Create TLS secret
+      run: |
+        kubectl create secret tls ${{ env.resourceGroupName }} --key ~/secrets/tls.key --cert ~/secrets/tls.crt -o ''
+        rm -rf ~/secrets
+
+    - name: Install ingress-nginx helm chart
+      run: |
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress --create-namespace \
+          --set controller.service.type=ClusterIP \
+          --set controller.extraArgs.default-ssl-certificate=default/${{ env.resourceGroupName }}
+
+    - name: Apply manifest
+      run: |
+        kubectl apply -f k8s.yaml
