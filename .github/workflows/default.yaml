@@ -32,12 +32,17 @@ jobs:
         gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output /tmp/secrets/tls.crt tls.crt.gpg
         gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output /tmp/secrets/main.parameters.json main.parameters.json.gpg
       
+    - name: Generate deployment name
+      id: deployment
+      run: |
+        echo "::set-output name=name::`date -u +gh_%F_%H-%M-%S`"
+
     - name: Provision infrastructure
       uses: azure/arm-deploy@v1
       id: deploy
       with:
         resourceGroupName: ${{ env.resourceGroupName }}
-        deploymentName: gh_${GITHUB_RUN_ID}
+        deploymentName: ${{ steps.deployment.outputs.name }}
         template: main.bicep
         parameters: /tmp/secrets/main.parameters.json
     
