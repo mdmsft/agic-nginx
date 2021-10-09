@@ -27,11 +27,10 @@ jobs:
 
     - name: Decrypt secrets
       run: |
-        mkdir -p ~/secrets
-        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.key tls.key.gpg
-        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/tls.crt tls.crt.gpg
-        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output ~/secrets/main.parameters.json main.parameters.json.gpg
-        ls -la ~/secrets
+        mkdir -p /tmp/secrets
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output /tmp/secrets/tls.key tls.key.gpg
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output /tmp/secrets/tls.crt tls.crt.gpg
+        gpg --quiet --batch --yes --decrypt --passphrase="${{ secrets.GPG_PASSPHRASE }}" --output /tmp/secrets/main.parameters.json main.parameters.json.gpg
       
     - name: Provision infrastructure
       uses: azure/arm-deploy@v1
@@ -40,7 +39,7 @@ jobs:
         resourceGroupName: ${{ env.resourceGroupName }}
         deploymentName: gh_${{ env.GITHUB_RUN_ID }}
         template: main.bicep
-        parameters: ~/secrets/main.parameters.json
+        parameters: /tmp/secrets/main.parameters.json
     
     - name: Get AKS credentials
       uses: Azure/CLI@v1
@@ -50,8 +49,8 @@ jobs:
 
     - name: Create TLS secret
       run: |
-        kubectl create secret tls ${{ env.resourceGroupName }} --key ~/secrets/tls.key --cert ~/secrets/tls.crt -o ''
-        rm -rf ~/secrets
+        kubectl create secret tls ${{ env.resourceGroupName }} --key /tmp/secrets/tls.key --cert /tmp/secrets/tls.crt -o ''
+        rm -rf /tmp/secrets
 
     - name: Install ingress-nginx helm chart
       run: |
