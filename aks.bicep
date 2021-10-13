@@ -79,11 +79,20 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2021-03-01' = {
 
 var networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
 
-resource rbac 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+resource kubeletRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
   name: guid(subscription().subscriptionId, subscription().tenantId, guid(aksCluster.id), networkContributorRoleId)
   scope: subnet
   properties: {
     principalId: aksCluster.properties.identityProfile.kubeletidentity.objectId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
+  }
+}
+
+resource aksRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+  name: guid(subscription().subscriptionId, subscription().tenantId, aksCluster.id, networkContributorRoleId)
+  scope: subnet
+  properties: {
+    principalId: aksCluster.identity.principalId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
   }
 }

@@ -65,7 +65,7 @@ jobs:
     - name: Install ingress-nginx helm chart
       run: |
         helm install ingress-nginx ingress-nginx/ingress-nginx \
-          --namespace ingress --create-namespace \
+          --namespace kube-system \
           --set controller.service.type=ClusterIP \
           --set controller.extraArgs.default-ssl-certificate=default/${{ env.resourceGroupName }}
 
