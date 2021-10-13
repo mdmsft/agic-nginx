@@ -66,7 +66,7 @@ jobs:
       run: |
         helm install ingress-nginx ingress-nginx/ingress-nginx \
           --namespace kube-system \
-          --set controller.service.type=ClusterIP \
+          --set controller.service.annotations."service\.beta\.kubernetes\.io\/azure-load-balancer-internal"=true \
           --set controller.extraArgs.default-ssl-certificate=default/${{ env.resourceGroupName }}
 
     - name: Apply manifest
